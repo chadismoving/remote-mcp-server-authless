@@ -96,16 +96,38 @@ export class MyMCP extends McpAgent {
     );
 
     // ---- Cloudflare Docs search (Algolia) ----
-    this.server.tool(
-      "cf_docs.search",
-	{ 
+    // inside MyMCP.init()
+this.server.tool(
+  "cf_docs.search",
+	{
 		q: z.string(),
-		topK: z.union([z.number(), z.string().regex(/^\d+$/)]).optional()
+		topK: z.union([z.number().int().min(1).max(20), z.string().regex(/^\d+$/)]).optional()
 	},
 	async ({ q, topK }) => {
-		const n = typeof topK === "string" ? parseInt(topK, 10) : topK;
-		const items = await cfDocsSearch(this.env as Env, q, n ?? 8);
-		return { content: [{ type: "json", json: { items } }] };
+		const k = typeof topK === "string" ? parseInt(topK, 10) : topK ?? 8;
+		const items = await cfDocsSearch(this.env as Env, q, k);
+
+		// ✅ Return plain text; MCP Playground expects "text" | "image" | "audio" | "resource(_link)"
+		return {
+		content: [
+			{
+			type: "text",
+			text: JSON.stringify({ items }, null, 2)
+			}
+		]
+		};
+
+		// If you prefer a downloadable JSON blob instead, use "resource":
+		// return {
+		//   content: [{
+		//     type: "resource",
+		//     resource: {
+		//       mimeType: "application/json",
+		//       data: btoa(unescape(encodeURIComponent(JSON.stringify({ items }, null, 2)))),
+		//       name: "cf_docs_search.json",
+		//     }
+		//   }]
+		// };
 	}
 	);
   }
