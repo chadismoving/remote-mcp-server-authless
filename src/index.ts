@@ -98,13 +98,16 @@ export class MyMCP extends McpAgent {
     // ---- Cloudflare Docs search (Algolia) ----
     this.server.tool(
       "cf_docs.search",
-      { q: z.string(), topK: z.number().int().min(1).max(20).optional() },
-      async ({ q, topK }) => {
-        const items = await cfDocsSearch(this.env as Env, q, topK ?? 8);
-        // Return JSON as pretty text so any MCP client can render it
-        return { content: [{ type: "text", text: JSON.stringify({ items }, null, 2) }] };
-      }
-    );
+	{ 
+		q: z.string(),
+		topK: z.union([z.number(), z.string().regex(/^\d+$/)]).optional()
+	},
+	async ({ q, topK }) => {
+		const n = typeof topK === "string" ? parseInt(topK, 10) : topK;
+		const items = await cfDocsSearch(this.env as Env, q, n ?? 8);
+		return { content: [{ type: "json", json: { items } }] };
+	}
+	);
   }
 }
 
